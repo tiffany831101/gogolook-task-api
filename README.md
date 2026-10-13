@@ -1,5 +1,7 @@
 # Task API
 
+[![CI](https://github.com/tiffany831101/gogolook-task-api/actions/workflows/ci.yml/badge.svg)](https://github.com/tiffany831101/gogolook-task-api/actions/workflows/ci.yml)
+
 A RESTful task API in Go, built with [gin](https://github.com/gin-gonic/gin) and in-memory storage.
 
 ## Run

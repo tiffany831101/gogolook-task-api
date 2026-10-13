@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Go ${{ matrix.go-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 1.22 is the minimum version declared in go.mod.
+        go-version: ["1.22", "stable"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build image
+        run: docker build -t task-api .
+
+      - name: Smoke test
+        run: |
+          docker run -d --name task-api -p 8080:8080 task-api
+          for i in $(seq 1 20); do
+            curl -sf localhost:8080/tasks >/dev/null && break
+            sleep 0.5
+          done
+          curl -sf -XPOST localhost:8080/tasks -d '{"name":"ci","status":0}'
+          echo
+          curl -sf localhost:8080/tasks | grep -q '"name":"ci"'
+
+      - name: Show container logs
+        if: always()
+        run: docker logs task-api || true
